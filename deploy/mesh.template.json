@@ -1,0 +1,122 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2014-04-01-preview/deploymentTemplate.json",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Location of the resources."
+      }
+    }
+  },
+  "resources": [
+    {
+      "apiVersion": "2018-07-01-preview",
+      "name": "remind-meNetwork",
+      "type": "Microsoft.ServiceFabricMesh/networks",
+      "location": "[parameters('location')]",
+      "dependsOn": [],
+      "properties": {
+        "addressPrefix": "10.0.0.4/22",
+        "ingressConfig": {
+          "layer4": [
+            {
+              "name": "webIngress",
+              "publicPort": "8080",
+              "applicationName": "remind-me",
+              "serviceName": "web",
+              "endpointName": "webListener"
+            },
+            {
+              "name": "serviceIngress",
+              "publicPort": "8081",
+              "applicationName": "remind-me",
+              "serviceName": "service",
+              "endpointName": "serviceListener"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "2018-07-01-preview",
+      "name": "remind-me",
+      "type": "Microsoft.ServiceFabricMesh/applications",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "Microsoft.ServiceFabricMesh/networks/remind-meNetwork"
+      ],
+      "properties": {
+        "description": "Service Fabric Mesh remind-me Application!",
+        "services": [
+          {
+            "type": "Microsoft.ServiceFabricMesh/services",
+            "location": "[parameters('location')]",
+            "name": "web",
+            "properties": {
+              "description": "Service Fabric Mesh web Application!",
+              "osType": "linux",
+              "codePackages": [
+                {
+                  "name": "webCode",
+                  "image": "test",
+                  "endpoints": [
+                    {
+                      "name": "webListener",
+                      "port": "80"
+                    }
+                  ],
+                  "resources": {
+                    "requests": {
+                      "cpu": "1",
+                      "memoryInGB": "1"
+                    }
+                  }
+                }
+              ],
+              "replicaCount": "1",
+              "networkRefs": [
+                {
+                  "name": "[resourceId('Microsoft.ServiceFabricMesh/networks', 'remind-meNetwork')]"
+                }
+              ]
+            }
+          },
+          {
+            "type": "Microsoft.ServiceFabricMesh/services",
+            "location": "[parameters('location')]",
+            "name": "service",
+            "properties": {
+              "description": "Service Fabric Mesh service Application!",
+              "osType": "linux",
+              "codePackages": [
+                {
+                  "name": "serviceCode",
+                  "image": "testservice",
+                  "endpoints": [
+                    {
+                      "name": "serviceListener",
+                      "port": "80"
+                    }
+                  ],
+                  "resources": {
+                    "requests": {
+                      "cpu": "1",
+                      "memoryInGB": "1"
+                    }
+                  }
+                }
+              ],
+              "replicaCount": "1",
+              "networkRefs": [
+                {
+                  "name": "[resourceId('Microsoft.ServiceFabricMesh/networks', 'remind-meNetwork')]"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

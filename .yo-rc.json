@@ -1,0 +1,9 @@
+{
+  "generator-azuresfmesh": {
+    "projName": "remind-me",
+    "serviceName": "service",
+    "imageName": "testservice",
+    "portMap": "80:8081",
+    "osType": "Linux"
+  }
+}
