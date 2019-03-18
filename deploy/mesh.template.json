@@ -59,7 +59,7 @@
               "codePackages": [
                 {
                   "name": "webCode",
-                  "image": "test",
+                  "image": "kubernetessuccinctly/remind-me-web:1.0.0",
                   "endpoints": [
                     {
                       "name": "webListener",
@@ -92,7 +92,7 @@
               "codePackages": [
                 {
                   "name": "serviceCode",
-                  "image": "testservice",
+                  "image": "kubernetessuccinctly/remind-me-api:1.0.0",
                   "endpoints": [
                     {
                       "name": "serviceListener",
