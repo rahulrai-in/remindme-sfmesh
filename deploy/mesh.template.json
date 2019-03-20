@@ -4,119 +4,150 @@
   "parameters": {
     "location": {
       "type": "string",
+      "defaultValue": "[resourceGroup().location]",
       "metadata": {
-        "description": "Location of the resources."
+        "description": "Location of the resources (e.g. westus, eastus, westeurope)."
       }
     }
   },
   "resources": [
     {
-      "apiVersion": "2018-07-01-preview",
-      "name": "remind-meNetwork",
+      "apiVersion": "2018-09-01-preview",
+      "name": "remind-me-network",
       "type": "Microsoft.ServiceFabricMesh/networks",
       "location": "[parameters('location')]",
       "dependsOn": [],
       "properties": {
-        "addressPrefix": "10.0.0.4/22",
-        "ingressConfig": {
-          "layer4": [
-            {
-              "name": "webIngress",
-              "publicPort": "8080",
-              "applicationName": "remind-me",
-              "serviceName": "web",
-              "endpointName": "webListener"
-            },
-            {
-              "name": "serviceIngress",
-              "publicPort": "8081",
-              "applicationName": "remind-me",
-              "serviceName": "service",
-              "endpointName": "serviceListener"
-            }
-          ]
-        }
+        "kind": "Local",
+        "description": "Service Fabric Mesh Network for Remind Me Application.",
+        "networkAddressPrefix": "10.0.0.0/24"
       }
     },
     {
-      "apiVersion": "2018-07-01-preview",
-      "name": "remind-me",
+      "apiVersion": "2018-09-01-preview",
+      "name": "remind-me-app",
       "type": "Microsoft.ServiceFabricMesh/applications",
       "location": "[parameters('location')]",
-      "dependsOn": [
-        "Microsoft.ServiceFabricMesh/networks/remind-meNetwork"
-      ],
+      "dependsOn": ["Microsoft.ServiceFabricMesh/networks/remind-me-network"],
       "properties": {
-        "description": "Service Fabric Mesh remind-me Application!",
         "services": [
           {
-            "type": "Microsoft.ServiceFabricMesh/services",
-            "location": "[parameters('location')]",
-            "name": "web",
+            "name": "remind-me-web",
             "properties": {
-              "description": "Service Fabric Mesh web Application!",
+              "description": "Remind me web app",
               "osType": "linux",
               "codePackages": [
                 {
-                  "name": "webCode",
+                  "name": "remindmeweb",
                   "image": "kubernetessuccinctly/remind-me-web:1.0.0",
                   "endpoints": [
                     {
                       "name": "webListener",
-                      "port": "80"
+                      "port": 80
                     }
                   ],
                   "resources": {
                     "requests": {
-                      "cpu": "1",
-                      "memoryInGB": "1"
+                      "cpu": 0.5,
+                      "memoryInGB": 1.0
                     }
                   }
                 }
               ],
-              "replicaCount": "1",
+              "replicaCount": 1,
               "networkRefs": [
                 {
-                  "name": "[resourceId('Microsoft.ServiceFabricMesh/networks', 'remind-meNetwork')]"
+                  "name": "[resourceId('Microsoft.ServiceFabricMesh/networks', 'remind-me-network')]",
+                  "endpointRefs": [
+                    {
+                      "name": "webListener"
+                    }
+                  ]
                 }
               ]
             }
           },
           {
-            "type": "Microsoft.ServiceFabricMesh/services",
-            "location": "[parameters('location')]",
-            "name": "service",
+            "name": "remind-me-api",
             "properties": {
-              "description": "Service Fabric Mesh service Application!",
+              "description": "Remind me API",
               "osType": "linux",
               "codePackages": [
                 {
-                  "name": "serviceCode",
+                  "name": "remindmeapi",
                   "image": "kubernetessuccinctly/remind-me-api:1.0.0",
                   "endpoints": [
                     {
-                      "name": "serviceListener",
-                      "port": "80"
+                      "name": "apiListener",
+                      "port": 8080
+                    }
+                  ],
+                  "environmentVariables": [
+                    {
+                      "name": "Voting_BackendHostName",
+                      "value": "votingdata"
+                    },
+                    {
+                      "name": "Voting_BackendHostPort",
+                      "value": "8288"
                     }
                   ],
                   "resources": {
                     "requests": {
-                      "cpu": "1",
-                      "memoryInGB": "1"
+                      "cpu": 0.5,
+                      "memoryInGB": 1
                     }
                   }
                 }
               ],
-              "replicaCount": "1",
+              "replicaCount": 1,
               "networkRefs": [
                 {
-                  "name": "[resourceId('Microsoft.ServiceFabricMesh/networks', 'remind-meNetwork')]"
+                  "name": "[resourceId('Microsoft.ServiceFabricMesh/networks', 'votingapp-network-linux')]",
+                  "endpointRefs": [
+                    {
+                      "name": "apiListener"
+                    }
+                  ]
                 }
               ]
             }
           }
         ]
       }
+    },
+    {
+      "apiVersion": "2018-09-01-preview",
+      "name": "remindmeGateway",
+      "type": "Microsoft.ServiceFabricMesh/gateways",
+      "location": "[parameters('location')]",
+      "dependsOn": ["Microsoft.ServiceFabricMesh/networks/remind-me-network"],
+      "properties": {
+        "description": "Service Fabric Mesh Gateway for Remind me app.",
+        "sourceNetwork": {
+          "name": "Open"
+        },
+        "destinationNetwork": {
+          "name": "[resourceId('Microsoft.ServiceFabricMesh/networks', 'remind-me-network')]"
+        },
+        "tcp": [
+          {
+            "name": "web",
+            "port": 80,
+            "destination": {
+              "applicationName": "remind-me-app",
+              "serviceName": "remind-me-web",
+              "endpointName": "webListener"
+            }
+          }
+        ]
+      }
     }
-  ]
+  ],
+  "outputs": {
+    "publicIPAddress": {
+      "value": "[reference('remindmeGateway').ipAddress]",
+      "type": "string"
+    }
+  }
 }
